@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Chat Admin - Quản Lý Dữ Liệu</title>
+    <title>AI Chat với Tìm Kiếm Dữ Liệu</title>
     <style>
         * {
             margin: 0;
@@ -398,6 +398,7 @@
             }
 
             .message-content {
+                max-width: 85%;
             }
         }
     </style>
@@ -407,7 +408,7 @@
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h2>📚 Dữ Liệu Đã Lưu (Admin)</h2>
+                <h2>📚 Dữ Liệu Đã Lưu</h2>
                 <button class="add-data-btn" onclick="openModal()">+ Thêm Dữ Liệu Mới</button>
             </div>
             <div class="data-list" id="dataList">
@@ -421,7 +422,7 @@
         <!-- Chat Area -->
         <div class="chat-area">
             <div class="chat-header">
-                <h1>💬 AI Chat Assistant (Admin)</h1>
+                <h1>💬 AI Chat Assistant</h1>
                 <div class="stats">
                     <span id="dataCount">0 dữ liệu</span>
                 </div>
@@ -429,7 +430,7 @@
             <div class="chat-messages" id="chatMessages">
                 <div class="message message-ai">
                     <div class="message-content">
-                        Xin chào! 👋 Tôi là trợ lý AI Admin. Hãy nhập câu hỏi hoặc từ khóa để tìm kiếm trong dữ liệu đã lưu. Bạn cũng có thể thêm dữ liệu mới bằng cách nhấn nút "Thêm Dữ Liệu Mới" bên trái.
+                        Xin chào! 👋 Tôi là trợ lý AI của bạn. Hãy nhập câu hỏi hoặc từ khóa để tìm kiếm trong dữ liệu đã lưu. Bạn cũng có thể thêm dữ liệu mới bằng cách nhấn nút "Thêm Dữ Liệu Mới" bên trái.
                     </div>
                 </div>
             </div>
@@ -472,23 +473,24 @@
     <script>
         // Lưu trữ dữ liệu
         let dataStore = [];
-        const API_URL = '/api/data';
 
-        // Load dữ liệu từ server khi trang load
+        // Load dữ liệu từ localStorage khi trang load
         window.onload = function() {
-            fetchData();
+            loadDataFromStorage();
+            renderDataList();
+            updateStats();
         };
 
-        // Lấy dữ liệu từ API
-        async function fetchData() {
-            try {
-                const response = await fetch(API_URL);
-                dataStore = await response.json();
-                renderDataList();
-                updateStats();
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                addMessage('ai', '⚠️ Lỗi kết nối đến server.');
+        // Lưu dữ liệu vào localStorage
+        function saveToStorage() {
+            localStorage.setItem('chatDataStore', JSON.stringify(dataStore));
+        }
+
+        // Load dữ liệu từ localStorage
+        function loadDataFromStorage() {
+            const stored = localStorage.getItem('chatDataStore');
+            if (stored) {
+                dataStore = JSON.parse(stored);
             }
         }
 
@@ -505,32 +507,27 @@
         }
 
         // Lưu dữ liệu
-        async function saveData(event) {
+        function saveData(event) {
             event.preventDefault();
             
             const title = document.getElementById('dataTitle').value;
             const content = document.getElementById('dataContent').value;
             
-            try {
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ title, content }),
-                });
-
-                if (response.ok) {
-                    await fetchData(); // Tải lại dữ liệu sau khi lưu
-                    closeModal();
-                    addMessage('ai', `✅ Đã lưu dữ liệu mới: "${title}"`);
-                } else {
-                    alert('Lỗi khi lưu dữ liệu');
-                }
-            } catch (error) {
-                console.error('Error saving data:', error);
-                alert('Lỗi kết nối');
-            }
+            const newData = {
+                id: Date.now(),
+                title: title,
+                content: content,
+                date: new Date().toLocaleString('vi-VN')
+            };
+            
+            dataStore.push(newData);
+            saveToStorage();
+            renderDataList();
+            updateStats();
+            closeModal();
+            
+            // Thông báo thành công
+            addMessage('ai', `✅ Đã lưu dữ liệu mới: "${title}"`);
         }
 
         // Render danh sách dữ liệu
@@ -548,11 +545,11 @@
             }
             
             dataList.innerHTML = dataStore.map(data => `
-                <div class="data-item" onclick="viewData('${data.id}')">
+                <div class="data-item" onclick="viewData(${data.id})">
                     <div class="data-item-title">${data.title}</div>
                     <div class="data-item-preview">${data.content.substring(0, 60)}...</div>
                     <div class="data-item-date">${data.date}</div>
-                    <button class="delete-btn" onclick="deleteData(event, '${data.id}')">Xóa</button>
+                    <button class="delete-btn" onclick="deleteData(event, ${data.id})">Xóa</button>
                 </div>
             `).join('');
         }
@@ -571,24 +568,14 @@
         }
 
         // Xóa dữ liệu
-        async function deleteData(event, id) {
+        function deleteData(event, id) {
             event.stopPropagation();
             if (confirm('Bạn có chắc muốn xóa dữ liệu này?')) {
-                try {
-                    const response = await fetch(`${API_URL}/${id}`, {
-                        method: 'DELETE',
-                    });
-
-                    if (response.ok) {
-                        await fetchData();
-                        addMessage('ai', '🗑️ Đã xóa dữ liệu');
-                    } else {
-                        alert('Lỗi khi xóa dữ liệu');
-                    }
-                } catch (error) {
-                    console.error('Error deleting data:', error);
-                    alert('Lỗi kết nối');
-                }
+                dataStore = dataStore.filter(d => d.id !== id);
+                saveToStorage();
+                renderDataList();
+                updateStats();
+                addMessage('ai', '🗑️ Đã xóa dữ liệu');
             }
         }
 
@@ -653,7 +640,7 @@
                     
                     addMessage('ai', response);
                 } else {
-                    addMessage('ai', `Không tìm thấy kết quả nào cho "<em>${message}</em>".`);
+                    addMessage('ai', `Không tìm thấy kết quả nào cho "<em>${message}</em>". Bạn có thể thử từ khóa khác hoặc thêm dữ liệu mới bằng nút "Thêm Dữ Liệu Mới".`);
                 }
             }, 500);
         }
