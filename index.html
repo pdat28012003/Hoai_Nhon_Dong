@@ -343,6 +343,16 @@
             font-weight: normal;
         }
 
+        .exact-match-badge {
+            background: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-left: 8px;
+            font-weight: normal;
+        }
+
         .dropdown-icon {
             font-size: 18px;
             transition: transform 0.3s ease;
@@ -645,7 +655,6 @@
                 renderCarouselSlides();
             } catch (error) {
                 console.error('Error fetching carousel images:', error);
-                // Use default images if API fails
                 carouselImages = [
                     { imageUrl: '/img/img1.jpg', alt: 'Bầu cử đại biểu quốc hội', order: 0 },
                     { imageUrl: '/img/img2.jpg', alt: 'Ngày hội của toàn dân', order: 1 },
@@ -659,11 +668,9 @@
             const carouselWrapper = document.querySelector('.carousel-wrapper');
             if (!carouselWrapper) return;
 
-            // Clear existing slides except structure
             const existingSlides = carouselWrapper.querySelectorAll('.carousel-slide');
             existingSlides.forEach(slide => slide.remove());
 
-            // Add slides from database
             carouselImages.forEach((image, index) => {
                 const slideDiv = document.createElement('div');
                 slideDiv.className = `carousel-slide ${index === 0 ? 'active' : ''}`;
@@ -671,7 +678,6 @@
                 carouselWrapper.appendChild(slideDiv);
             });
 
-            // Update indicators
             const indicatorsContainer = carouselWrapper.parentElement.querySelector('.carousel-indicators');
             if (indicatorsContainer) {
                 indicatorsContainer.innerHTML = '';
@@ -723,7 +729,6 @@
             startCarousel();
         }
 
-        // Gallery Functions
         function openFullscreen(imageSrc) {
             const modal = document.getElementById('fullscreenModal');
             const image = document.getElementById('fullscreenImage');
@@ -759,29 +764,73 @@
                     },
                     {
                         id: 3,
+                        title: "Danh sách cử tri",
+                        content: "Danh sách cử tri được lập và niêm yết công khai tại các khu vực bỏ phiếu. Cử tri cần kiểm tra danh sách để đảm bảo thông tin chính xác.",
+                        date: new Date().toLocaleString('vi-VN')
+                    },
+                    {
+                        id: 4,
                         title: "Quyền và nghĩa vụ của cử tri",
                         content: "Mọi công dân từ đủ 18 tuổi trở lên có quyền bầu cử và từ đủ 21 tuổi trở lên có quyền ứng cử. Việc bầu cử và ứng cử là quyền và nghĩa vụ của công dân.",
                         date: new Date().toLocaleString('vi-VN')
                     },
                     {
-                        id: 4,
+                        id: 5,
                         title: "Thủ tục bầu cử",
                         content: "Cử tri cần mang theo thẻ căn cước công dân hoặc chứng minh nhân dân và thông báo bầu cử đến địa điểm bỏ phiếu được chỉ định trong thời gian quy định.",
                         date: new Date().toLocaleString('vi-VN')
                     },
                     {
-                        id: 5,
+                        id: 6,
                         title: "Các mốc thời gian quan trọng",
                         content: "Công tác chuẩn bị bầu cử bắt đầu từ quý IV năm 2025, bao gồm lập danh sách cử tri, giới thiệu ứng cử viên, và vận động bầu cử. Ngày bầu cử chính thức là 15-3-2026.",
+                        date: new Date().toLocaleString('vi-VN')
+                    },
+                    {
+                        id: 7,
+                        title: "Danh sách ứng cử viên đại biểu Quốc hội",
+                        content: "Danh sách các ứng cử viên đại biểu Quốc hội được công bố và niêm yết công khai để cử tri tham khảo trước ngày bầu cử.",
                         date: new Date().toLocaleString('vi-VN')
                     }
                 ];
             }
         }
 
+        // Hàm chuẩn hóa chuỗi (loại bỏ dấu, chuyển thành chữ thường)
+        function normalizeString(str) {
+            return str.toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/g, 'd')
+                .replace(/Đ/g, 'D');
+        }
+
+        // Hàm tìm cụm từ liền kề trong văn bản
+        function findConsecutivePhrase(text, queryWords) {
+            const textWords = text.toLowerCase().split(/\s+/);
+            const queryLength = queryWords.length;
+            
+            for (let i = 0; i <= textWords.length - queryLength; i++) {
+                let match = true;
+                for (let j = 0; j < queryLength; j++) {
+                    if (textWords[i + j] !== queryWords[j]) {
+                        match = false;
+                        break;
+                    }
+                }
+                if (match) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Thuật toán tìm kiếm cải tiến - CHỈ TÌM TRONG TITLE
         function searchData(query) {
             const queryLower = query.toLowerCase().trim();
+            const queryNormalized = normalizeString(query);
             const queryWords = queryLower.split(/\s+/).filter(word => word.length > 0);
+            const queryWordsNormalized = queryNormalized.split(/\s+/).filter(word => word.length > 0);
             
             if (queryWords.length === 0) return [];
             
@@ -789,64 +838,150 @@
             
             dataStore.forEach(data => {
                 const titleLower = data.title.toLowerCase();
-                const titleWords = titleLower.split(/\s+/);
+                const titleNormalized = normalizeString(data.title);
                 
                 let score = 0;
-                let exactPhraseMatch = false;
+                let matchType = '';
                 let matchedWords = 0;
-                let sequenceBonus = 0;
                 
+                // 1. ĐIỀU KIỆN ƯU TIÊN CAO NHẤT: Khớp chính xác toàn bộ cụm từ trong title (có thứ tự, liền kề)
                 if (titleLower.includes(queryLower)) {
-                    exactPhraseMatch = true;
-                    score += 10000;
+                    score += 100000;
+                    matchType = 'exact-title';
+                    matchedWords = queryWords.length;
+                } else if (titleNormalized.includes(queryNormalized)) {
+                    score += 70000;
+                    matchType = 'exact-title-normalized';
+                    matchedWords = queryWords.length;
                 }
                 
-                queryWords.forEach((queryWord, qIndex) => {
-                    titleWords.forEach((titleWord, tIndex) => {
-                        if (titleWord === queryWord) {
-                            matchedWords++;
-                            score += 100;
-                            
-                            if (qIndex > 0 && tIndex > 0) {
-                                const prevQueryWord = queryWords[qIndex - 1];
-                                const prevTitleWord = titleWords[tIndex - 1];
-                                if (prevTitleWord === prevQueryWord) {
-                                    sequenceBonus += 50;
+                // 2. ĐIỀU KIỆN ƯU TIÊN CAO: Tất cả từ khóa xuất hiện liền kề trong title (có thứ tự)
+                else if (findConsecutivePhrase(titleLower, queryWords)) {
+                    score += 50000;
+                    matchType = 'consecutive-title';
+                    matchedWords = queryWords.length;
+                } else if (findConsecutivePhrase(titleNormalized, queryWordsNormalized)) {
+                    score += 35000;
+                    matchType = 'consecutive-title-normalized';
+                    matchedWords = queryWords.length;
+                }
+                
+                // 3. ĐIỀU KIỆN TRUNG BÌNH: Tất cả từ khóa xuất hiện trong title nhưng không liền kề
+                else {
+                    const titleWords = titleLower.split(/\s+/);
+                    const titleWordsNormalized = titleNormalized.split(/\s+/);
+                    
+                    let titleMatches = 0;
+                    let partialMatches = 0;
+                    let orderScore = 0;
+                    
+                    // Kiểm tra từng từ trong query
+                    queryWords.forEach((queryWord, qIndex) => {
+                        let foundInTitle = false;
+                        
+                        // Kiểm tra khớp chính xác
+                        titleWords.forEach((titleWord, tIndex) => {
+                            if (titleWord === queryWord) {
+                                titleMatches++;
+                                matchedWords++;
+                                foundInTitle = true;
+                                
+                                // Bonus cho thứ tự đúng
+                                if (qIndex > 0 && tIndex > 0) {
+                                    const prevQueryWord = queryWords[qIndex - 1];
+                                    const prevTitleWord = titleWords[tIndex - 1];
+                                    if (prevTitleWord === prevQueryWord) {
+                                        orderScore += 500;
+                                    }
                                 }
                             }
+                        });
+                        
+                        // Kiểm tra khớp không dấu nếu chưa tìm thấy
+                        if (!foundInTitle) {
+                            const queryWordNormalized = queryWordsNormalized[qIndex];
+                            
+                            titleWordsNormalized.forEach(titleWord => {
+                                if (titleWord === queryWordNormalized) {
+                                    titleMatches += 0.8;
+                                    matchedWords += 0.8;
+                                    foundInTitle = true;
+                                }
+                            });
                         }
-                        else if (titleWord.includes(queryWord) || queryWord.includes(titleWord)) {
-                            matchedWords += 0.5;
-                            score += 30;
+                        
+                        // Kiểm tra khớp một phần (chứa từ khóa)
+                        if (!foundInTitle) {
+                            titleWords.forEach(titleWord => {
+                                if (titleWord.includes(queryWord) || queryWord.includes(titleWord)) {
+                                    partialMatches++;
+                                    matchedWords += 0.3;
+                                }
+                            });
                         }
                     });
-                });
+                    
+                    // Tính điểm cho các trường hợp không liền kề
+                    if (titleMatches > 0) {
+                        score += titleMatches * 1000;
+                        score += orderScore;
+                        matchType = 'scattered-title';
+                    }
+                    
+                    if (partialMatches > 0) {
+                        score += partialMatches * 100;
+                        if (!matchType) matchType = 'partial';
+                    }
+                }
                 
+                // 4. BONUS ĐIỂM DỰA TRÊN ĐỘ DÀI TƯƠNG ĐỒNG
+                if (score > 0) {
+                    const titleLength = data.title.split(/\s+/).length;
+                    const contentLength = data.content.split(/\s+/).length;
+                    const queryLength = queryWords.length;
+                    
+                    // Ưu tiên kết quả có độ dài title gần với query
+                    const lengthDiff = Math.abs(titleLength - queryLength);
+                    if (lengthDiff === 0) {
+                        score += 5000; // Title có cùng độ dài với query
+                    } else if (lengthDiff <= 2) {
+                        score += 3000; // Title có độ dài gần với query
+                    } else if (lengthDiff <= 5) {
+                        score += 1000;
+                    }
+                    
+                    // Penalty cho kết quả quá dài so với query
+                    if (titleLength > queryLength * 3) {
+                        score -= 500;
+                    }
+                }
+                
+                // 5. BONUS CHO TỶ LỆ KHỚP
                 const matchRatio = matchedWords / queryWords.length;
-                score += matchRatio * 200;
-                score += sequenceBonus;
+                score += matchRatio * 2000;
                 
+                // Chỉ thêm vào kết quả nếu có ít nhất 1 từ khớp
                 if (matchedWords > 0) {
                     results.push({
                         title: data.title,
                         content: data.content,
                         date: data.date,
                         score: score,
-                        matchedWords: matchedWords,
+                        matchedWords: Math.round(matchedWords * 10) / 10,
                         totalWords: queryWords.length,
-                        exactMatch: exactPhraseMatch,
+                        matchType: matchType,
                         matchRatio: matchRatio
                     });
                 }
             });
             
+            // Sắp xếp theo điểm số
             results.sort((a, b) => {
-                if (a.exactMatch && !b.exactMatch) return -1;
-                if (!a.exactMatch && b.exactMatch) return 1;
                 if (b.score !== a.score) return b.score - a.score;
                 return b.matchRatio - a.matchRatio;
             });
             
+            // Lọc kết quả: chỉ giữ những kết quả có điểm số >= 30% điểm cao nhất
             const threshold = results.length > 0 ? results[0].score * 0.3 : 0;
             const filteredResults = results.filter(r => r.score >= threshold);
             
@@ -854,7 +989,9 @@
                 title: item.title,
                 content: item.content,
                 date: item.date,
-                matchInfo: `${Math.round(item.matchedWords)}/${item.totalWords} từ khớp`
+                matchInfo: `${item.matchedWords}/${item.totalWords} từ`,
+                matchType: item.matchType,
+                isExactMatch: item.matchType.startsWith('exact') || item.matchType.startsWith('consecutive')
             }));
         }
 
@@ -906,12 +1043,15 @@
                     
                     results.forEach((result, index) => {
                         const resultId = 'result-' + Date.now() + '-' + index;
+                        const badgeClass = result.isExactMatch ? 'exact-match-badge' : 'match-badge';
+                        const badgeText = result.isExactMatch ? '✓ Khớp chính xác' : result.matchInfo;
+                        
                         response += `
                             <div class="search-result-item">
                                 <div class="result-header" onclick="toggleResult('${resultId}')">
                                     <span class="result-title">
                                         ${index + 1}. ${result.title}
-                                        <span class="match-badge">${result.matchInfo}</span>
+                                        <span class="${badgeClass}">${badgeText}</span>
                                     </span>
                                     <span class="dropdown-icon" id="icon-${resultId}">▼</span>
                                 </div>
