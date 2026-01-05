@@ -54,11 +54,14 @@ mongoose.connect(process.env.MONGO_URL, {
 .then(() => console.log('✅ MongoDB Connected'))
 .catch(err => console.error('❌ MongoDB Connection Error:', err));
 
-// Schema
+// Schemas
+
+// Chat Data Schema
 const ChatDataSchema = new mongoose.Schema({
     title: { type: String, required: true },
     content: { type: String, required: true },
     date: { type: String, default: () => new Date().toLocaleString('vi-VN') },
+    questionCount: { type: Number, default: 0 },
     createdAt: { type: Date, default: Date.now }
 });
 
@@ -71,10 +74,225 @@ const CarouselImageSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 });
 
+// Visitor Counter Schema
+const VisitorCounterSchema = new mongoose.Schema({
+    count: { type: Number, default: 0, required: true },
+    lastUpdated: { type: Date, default: Date.now }
+});
+
+// Question Request Counter Schema
+const QuestionRequestCounterSchema = new mongoose.Schema({
+    count: { type: Number, default: 0, required: true },
+    lastUpdated: { type: Date, default: Date.now }
+});
+
+// Models
 const ChatData = mongoose.model('ChatData', ChatDataSchema);
 const CarouselImage = mongoose.model('CarouselImage', CarouselImageSchema);
+const VisitorCounter = mongoose.model('VisitorCounter', VisitorCounterSchema);
+const QuestionRequestCounter = mongoose.model('QuestionRequestCounter', QuestionRequestCounterSchema);
+
+// Initialize Visitor Counter
+async function initializeVisitorCounter() {
+    try {
+        const counter = await VisitorCounter.findOne();
+        if (!counter) {
+            const newCounter = new VisitorCounter({ count: 0 });
+            await newCounter.save();
+            console.log('✅ Visitor counter initialized');
+        }
+    } catch (err) {
+        console.error('❌ Error initializing visitor counter:', err);
+    }
+}
+
+// Initialize Question Request Counter
+async function initializeQuestionRequestCounter() {
+    try {
+        const counter = await QuestionRequestCounter.findOne();
+        if (!counter) {
+            const newCounter = new QuestionRequestCounter({ count: 0 });
+            await newCounter.save();
+            console.log('✅ Question request counter initialized');
+        }
+    } catch (err) {
+        console.error('❌ Error initializing question request counter:', err);
+    }
+}
+
+// Call initialization after MongoDB connects
+mongoose.connection.once('open', () => {
+    initializeVisitorCounter();
+    initializeQuestionRequestCounter();
+});
 
 // Routes
+
+// ========== VISITOR COUNTER ROUTES ==========
+
+// Increment visitor count (called when page loads)
+app.post('/api/visitor', async (req, res) => {
+    try {
+        let counter = await VisitorCounter.findOne();
+        
+        if (!counter) {
+            counter = new VisitorCounter({ count: 1 });
+        } else {
+            counter.count += 1;
+            counter.lastUpdated = new Date();
+        }
+        
+        await counter.save();
+        
+        res.json({
+            success: true,
+            count: counter.count,
+            lastUpdated: counter.lastUpdated
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            error: 'Không thể cập nhật số lượt truy cập',
+            details: err.message
+        });
+    }
+});
+
+// Get visitor count (without incrementing)
+app.get('/api/visitor', async (req, res) => {
+    try {
+        let counter = await VisitorCounter.findOne();
+        
+        if (!counter) {
+            counter = new VisitorCounter({ count: 0 });
+            await counter.save();
+        }
+        
+        res.json({
+            success: true,
+            count: counter.count,
+            lastUpdated: counter.lastUpdated
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            error: 'Không thể lấy số lượt truy cập',
+            details: err.message
+        });
+    }
+});
+
+// Reset visitor count (admin only)
+app.post('/api/visitor/reset', async (req, res) => {
+    try {
+        let counter = await VisitorCounter.findOne();
+        
+        if (!counter) {
+            counter = new VisitorCounter({ count: 0 });
+        } else {
+            counter.count = 0;
+            counter.lastUpdated = new Date();
+        }
+        
+        await counter.save();
+        
+        res.json({
+            success: true,
+            message: 'Đã reset số lượt truy cập về 0',
+            count: counter.count
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            error: 'Không thể reset số lượt truy cập',
+            details: err.message
+        });
+    }
+});
+
+// ========== QUESTION REQUEST COUNTER ROUTES ==========
+
+// Increment question request count (called when user sends a question)
+app.post('/api/questions/request', async (req, res) => {
+    try {
+        let counter = await QuestionRequestCounter.findOne();
+        
+        if (!counter) {
+            counter = new QuestionRequestCounter({ count: 1 });
+        } else {
+            counter.count += 1;
+            counter.lastUpdated = new Date();
+        }
+        
+        await counter.save();
+        
+        res.json({
+            success: true,
+            count: counter.count,
+            lastUpdated: counter.lastUpdated
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            error: 'Không thể cập nhật số lượng câu hỏi',
+            details: err.message
+        });
+    }
+});
+
+// Get question request count
+app.get('/api/questions/request', async (req, res) => {
+    try {
+        let counter = await QuestionRequestCounter.findOne();
+        
+        if (!counter) {
+            counter = new QuestionRequestCounter({ count: 0 });
+            await counter.save();
+        }
+        
+        res.json({
+            success: true,
+            count: counter.count,
+            lastUpdated: counter.lastUpdated
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            error: 'Không thể lấy số lượng câu hỏi',
+            details: err.message
+        });
+    }
+});
+
+// Reset question request count (admin only)
+app.post('/api/questions/request/reset', async (req, res) => {
+    try {
+        let counter = await QuestionRequestCounter.findOne();
+        
+        if (!counter) {
+            counter = new QuestionRequestCounter({ count: 0 });
+        } else {
+            counter.count = 0;
+            counter.lastUpdated = new Date();
+        }
+        
+        await counter.save();
+        
+        res.json({
+            success: true,
+            message: 'Đã reset số lượng câu hỏi về 0',
+            count: counter.count
+        });
+    } catch (err) {
+        res.status(500).json({
+            success: false,
+            error: 'Không thể reset số lượng câu hỏi',
+            details: err.message
+        });
+    }
+});
+
+// ========== CHAT DATA ROUTES ==========
 
 // Get all data
 app.get('/api/data', async (req, res) => {
@@ -110,6 +328,46 @@ app.post('/api/data', async (req, res) => {
     }
 });
 
+// Increment question count for a specific question
+app.post('/api/data/:id/increment', async (req, res) => {
+    try {
+        const data = await ChatData.findByIdAndUpdate(
+            req.params.id,
+            { $inc: { questionCount: 1 } },
+            { new: true }
+        );
+        
+        if (!data) {
+            return res.status(404).json({ error: 'Question not found' });
+        }
+        
+        res.json({
+            success: true,
+            id: data._id,
+            title: data.title,
+            questionCount: data.questionCount
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Get total question count
+app.get('/api/questions/total-count', async (req, res) => {
+    try {
+        const questions = await ChatData.find();
+        const totalCount = questions.reduce((sum, q) => sum + (q.questionCount || 0), 0);
+        
+        res.json({
+            success: true,
+            totalCount: totalCount,
+            totalQuestions: questions.length
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // Delete data
 app.delete('/api/data/:id', async (req, res) => {
     try {
@@ -119,6 +377,8 @@ app.delete('/api/data/:id', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
+// ========== CAROUSEL ROUTES ==========
 
 // Get carousel images
 app.get('/api/carousel', async (req, res) => {
@@ -230,6 +490,8 @@ app.delete('/api/carousel/:id', async (req, res) => {
     }
 });
 
+// ========== FRONTEND ROUTES ==========
+
 // Serve frontend files
 app.get('/admin', (req, res) => {
     res.sendFile(path.join(__dirname, 'admin.html'));
@@ -241,5 +503,6 @@ app.get('/', (req, res) => {
 
 // Start Server
 app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`🚀 Server running on http://localhost:${PORT}`);
+    console.log(`📊 Visitor counter API: POST http://localhost:${PORT}/api/visitor`);
 });

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Chat Search - Bầu Cử Hoài Nhơn Bắc</title>
+    <title>AI Chat Search - Bầu Cử Hoài Nhơn Đông</title>
     <style>
         * {
             margin: 0;
@@ -43,8 +43,8 @@
 
         .chat-header {
             padding: 20px;
-            background: #c4cbec;
-            color: rgb(0, 0, 0);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -53,6 +53,141 @@
 
         .chat-header h1 {
             font-size: 24px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Counter Container */
+        .counters-wrapper {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        /* Visitor Counter Styles - Enhanced */
+        .visitor-counter {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: white;
+            padding: 10px 18px;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .visitor-counter:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+        }
+
+        .visitor-counter-icon {
+            font-size: 24px;
+            animation: pulse 2s infinite;
+            filter: drop-shadow(0 2px 4px rgba(102, 126, 234, 0.3));
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+
+        .visitor-counter-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .visitor-counter-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: #667eea;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .visitor-counter-number {
+            font-size: 20px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+        }
+
+        .visitor-counter-loading {
+            color: #999;
+            font-size: 14px;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Question Counter Styles - Enhanced */
+        .question-counter {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: white;
+            padding: 10px 18px;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .question-counter:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.3);
+            border-color: #28a745;
+        }
+
+        .question-counter-icon {
+            font-size: 24px;
+            animation: bounce 2s infinite;
+            filter: drop-shadow(0 2px 4px rgba(40, 167, 69, 0.3));
+        }
+
+        @keyframes bounce {
+            0%, 100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .question-counter-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .question-counter-text {
+            font-size: 11px;
+            font-weight: 600;
+            color: #28a745;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .question-counter-number {
+            font-size: 20px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
         }
 
         /* Carousel Styles */
@@ -268,7 +403,7 @@
         }
 
         .message-content {
-            max-width: 70%;
+            max-width: 90%;
             padding: 12px 16px;
             border-radius: 12px;
             line-height: 1.5;
@@ -295,6 +430,8 @@
             padding: 12px;
             margin-top: 8px;
             border-radius: 8px;
+            max-height: none;
+            overflow-y: visible;
         }
 
         .search-results-title {
@@ -367,20 +504,22 @@
         .result-content {
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.4s ease, margin-top 0.3s ease, opacity 0.3s ease;
+            transition: max-height 0.5s ease, margin-top 0.3s ease, opacity 0.3s ease;
             opacity: 0;
         }
 
         .result-content.expanded {
-            max-height: 1000px;
+            max-height: none;
             margin-top: 12px;
             opacity: 1;
         }
 
         .content-text {
-            line-height: 1.6;
+            line-height: 1.8;
             white-space: pre-wrap;
             color: #555;
+            max-height: none;
+            overflow: visible;
         }
 
         .content-date {
@@ -538,7 +677,29 @@
                 max-width: 85%;
             }
 
+            .chat-header {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+
             .chat-header h1 {
+                font-size: 18px;
+            }
+
+            .counters-wrapper {
+                align-self: flex-end;
+            }
+
+            .visitor-counter, .question-counter {
+                padding: 8px 14px;
+            }
+
+            .visitor-counter-icon, .question-counter-icon {
+                font-size: 20px;
+            }
+
+            .visitor-counter-number, .question-counter-number {
                 font-size: 18px;
             }
 
@@ -567,12 +728,32 @@
     <div class="container">
         <div class="chat-area">
             <div class="chat-header">
-                <h1>🗳️ AI HỎI ĐÁP BẦU CỬ PHƯỜNG HOÀI NHƠN BẮC</h1>
+                <h1>AI TRỢ LÝ HỎI ĐÁP BẦU CỬ PHƯỜNG HOÀI NHƠN Đông, TỈNH GIA LAI</h1>
+                <div class="counters-wrapper">
+                    <div class="visitor-counter">
+                        <span class="visitor-counter-icon"></span>
+                        <div class="visitor-counter-content">
+                            <span class="visitor-counter-text">Tổng lượt truy cập</span>
+                            <span class="visitor-counter-number" id="visitorCount">
+                                <span class="visitor-counter-loading">...</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="question-counter">
+                        <span class="question-counter-icon"></span>
+                        <div class="question-counter-content">
+                            <span class="question-counter-text">Tổng câu hỏi đã trả lời</span>
+                            <span class="question-counter-number" id="questionCount">
+                                <span class="visitor-counter-loading">...</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="chat-messages" id="chatMessages">
                 <div class="message message-ai">
                     <div class="message-content">
-                        <strong>Xin chào! 👋 TÔI LÀ TRỢ LÝ AI HỎI ĐÁP BẦU CỬ PHƯỜNG HOÀI NHƠN BẮC</strong>
+                        <strong>Xin chào! 👋 TÔI LÀ AI TRỢ LÝ HỎI ĐÁP BẦU CỬ PHƯỜNG HOÀI NHƠN Đông, TỈNH GIA LAI</strong>
 
                         <!-- Carousel for Election Images -->
                         <div class="carousel-container">
@@ -584,7 +765,7 @@
                                     <img src="/img/img2.jpg" alt="Ngày hội của toàn dân">
                                 </div>
                                 <div class="carousel-slide">
-                                    <img src="/img/img3.jpg" alt="Phường Hoài Nhơn Bắc">
+                                    <img src="/img/img3.jpg" alt="Phường Hoài Nhơn Đông">
                                 </div>
                             </div>
                             <button class="carousel-btn prev" onclick="changeSlide(-1)">❮</button>
@@ -597,11 +778,14 @@
                         </div>
 
                         <div class="options-container">
-                            <button class="option-btn" onclick="selectOption('Có bao nhiêu đơn vị bầu cử ?')">Có bao nhiêu đơn vị bầu cử ?</button>
+                            <button class="option-btn" onclick="selectOption('Danh sách, số lượng đơn vị bầu cử đại biểu Quốc Hội tại Tỉnh Gia Lai ')">Danh sách, số lượng đơn vị bầu cử đại biểu Quốc Hội tại Tỉnh Gia Lai </button>
                             <button class="option-btn" onclick="selectOption('Ngày Bầu cử là ngày mấy ?')">Ngày Bầu cử là ngày mấy ?</button>
                             <button class="option-btn" onclick="selectOption('Các mốc thời gian quan trọng')">Các mốc thời gian quan trọng</button>
-                            <button class="option-btn" onclick="selectOption('ĐƠN VỊ BẦU CỬ')">ĐƠN VỊ BẦU CỬ</button>
-                            <button class="option-btn" onclick="selectOption('Hoài Nhơn Bắc có bao nhiêu đơn vị bầu cử ?')">Hoài Nhơn Bắc có bao nhiêu đơn vị bầu cử ?</button>
+                            <button class="option-btn" onclick="selectOption('Danh sách, số lượng đơn vị bầu cử HĐND Tỉnh Gia Lai ')">Danh sách, số lượng đơn vị bầu cử HĐND Tỉnh Gia Lai  </button>
+                            <button class="option-btn" onclick="selectOption('Hoài Nhơn Đông có bao nhiêu đơn vị bầu cử ?')">Hoài Nhơn Đông có bao nhiêu đơn vị bầu cử ?</button>
+                            <button class="option-btn" onclick="selectOption('Danh sách, số lượng đơn vị bầu cử tại Hoài Nhơn Đông ?')">Danh sách, số lượng đơn vị bầu cử tại Hoài Nhơn Đông ?</button>
+                            <button class="option-btn" onclick="selectOption('27 khu vực bỏ phiếu')">27 khu vực bỏ phiếu</button>
+
                         </div>
                     </div>
                 </div>
@@ -632,6 +816,8 @@
         let carouselImages = [];
         const API_URL = '/api/data';
         const CAROUSEL_API_URL = '/api/carousel';
+        const VISITOR_API_URL = '/api/visitor';
+        const QUESTION_REQUEST_API_URL = '/api/questions/request';
         let currentSlide = 0;
         let slideInterval;
 
@@ -639,7 +825,83 @@
             fetchData();
             fetchCarouselImages();
             startCarousel();
+            incrementVisitorCount();
+            loadQuestionRequestCount();
         };
+
+        // Visitor Counter Functions
+        async function incrementVisitorCount() {
+            try {
+                // Gọi API để tăng số lượt truy cập
+                const response = await fetch(VISITOR_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    updateVisitorDisplay(data.count);
+                } else {
+                    console.error('Error incrementing visitor count');
+                    updateVisitorDisplay('N/A');
+                }
+            } catch (error) {
+                console.error('Error calling visitor API:', error);
+                updateVisitorDisplay('N/A');
+            }
+        }
+
+        function updateVisitorDisplay(count) {
+            const visitorCountElement = document.getElementById('visitorCount');
+            if (visitorCountElement) {
+                // Format số với dấu phẩy phân cách hàng nghìn
+                const formattedCount = typeof count === 'number' 
+                    ? count.toLocaleString('vi-VN') 
+                    : count;
+                visitorCountElement.textContent = formattedCount;
+            }
+        }
+
+        // Question Count Functions
+        async function loadQuestionRequestCount() {
+            try {
+                const response = await fetch(QUESTION_REQUEST_API_URL);
+                const data = await response.json();
+                updateQuestionCountDisplay(data.count);
+            } catch (error) {
+                console.error('Error loading question request count:', error);
+            }
+        }
+
+        async function incrementQuestionRequest() {
+            try {
+                const response = await fetch(QUESTION_REQUEST_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    updateQuestionCountDisplay(data.count);
+                }
+            } catch (error) {
+                console.error('Error incrementing question request count:', error);
+            }
+        }
+
+        function updateQuestionCountDisplay(count) {
+            const questionCountElement = document.getElementById('questionCount');
+            if (questionCountElement) {
+                const formattedCount = typeof count === 'number' 
+                    ? count.toLocaleString('vi-VN') 
+                    : count;
+                questionCountElement.textContent = formattedCount;
+            }
+        }
 
         // Carousel Functions
         function startCarousel() {
@@ -658,7 +920,7 @@
                 carouselImages = [
                     { imageUrl: '/img/img1.jpg', alt: 'Bầu cử đại biểu quốc hội', order: 0 },
                     { imageUrl: '/img/img2.jpg', alt: 'Ngày hội của toàn dân', order: 1 },
-                    { imageUrl: '/img/img3.jpg', alt: 'Phường Hoài Nhơn Bắc', order: 2 }
+                    { imageUrl: '/img/img3.jpg', alt: 'Phường Hoài Nhơn Đông', order: 2 }
                 ];
                 renderCarouselSlides();
             }
@@ -759,7 +1021,7 @@
                     {
                         id: 2,
                         title: "Đơn vị bầu cử",
-                        content: "Phường Hoài Nhơn Bắc được chia thành nhiều đơn vị bầu cử để tổ chức bầu cử đại biểu Hội đồng nhân dân cấp phường và các cấp cao hơn.",
+                        content: "Phường Hoài Nhơn Đông được chia thành nhiều đơn vị bầu cử để tổ chức bầu cử đại biểu Hội đồng nhân dân cấp phường và các cấp cao hơn.",
                         date: new Date().toLocaleString('vi-VN')
                     },
                     {
@@ -796,7 +1058,6 @@
             }
         }
 
-        // Hàm chuẩn hóa chuỗi (loại bỏ dấu, chuyển thành chữ thường)
         function normalizeString(str) {
             return str.toLowerCase()
                 .normalize('NFD')
@@ -805,7 +1066,6 @@
                 .replace(/Đ/g, 'D');
         }
 
-        // Hàm tìm cụm từ liền kề trong văn bản
         function findConsecutivePhrase(text, queryWords) {
             const textWords = text.toLowerCase().split(/\s+/);
             const queryLength = queryWords.length;
@@ -825,7 +1085,6 @@
             return false;
         }
 
-        // Thuật toán tìm kiếm cải tiến - CHỈ TÌM TRONG TITLE
         function searchData(query) {
             const queryLower = query.toLowerCase().trim();
             const queryNormalized = normalizeString(query);
@@ -844,7 +1103,6 @@
                 let matchType = '';
                 let matchedWords = 0;
                 
-                // 1. ĐIỀU KIỆN ƯU TIÊN CAO NHẤT: Khớp chính xác toàn bộ cụm từ trong title (có thứ tự, liền kề)
                 if (titleLower.includes(queryLower)) {
                     score += 100000;
                     matchType = 'exact-title';
@@ -855,7 +1113,6 @@
                     matchedWords = queryWords.length;
                 }
                 
-                // 2. ĐIỀU KIỆN ƯU TIÊN CAO: Tất cả từ khóa xuất hiện liền kề trong title (có thứ tự)
                 else if (findConsecutivePhrase(titleLower, queryWords)) {
                     score += 50000;
                     matchType = 'consecutive-title';
@@ -866,7 +1123,6 @@
                     matchedWords = queryWords.length;
                 }
                 
-                // 3. ĐIỀU KIỆN TRUNG BÌNH: Tất cả từ khóa xuất hiện trong title nhưng không liền kề
                 else {
                     const titleWords = titleLower.split(/\s+/);
                     const titleWordsNormalized = titleNormalized.split(/\s+/);
@@ -875,18 +1131,15 @@
                     let partialMatches = 0;
                     let orderScore = 0;
                     
-                    // Kiểm tra từng từ trong query
                     queryWords.forEach((queryWord, qIndex) => {
                         let foundInTitle = false;
                         
-                        // Kiểm tra khớp chính xác
                         titleWords.forEach((titleWord, tIndex) => {
                             if (titleWord === queryWord) {
                                 titleMatches++;
                                 matchedWords++;
                                 foundInTitle = true;
                                 
-                                // Bonus cho thứ tự đúng
                                 if (qIndex > 0 && tIndex > 0) {
                                     const prevQueryWord = queryWords[qIndex - 1];
                                     const prevTitleWord = titleWords[tIndex - 1];
@@ -897,7 +1150,6 @@
                             }
                         });
                         
-                        // Kiểm tra khớp không dấu nếu chưa tìm thấy
                         if (!foundInTitle) {
                             const queryWordNormalized = queryWordsNormalized[qIndex];
                             
@@ -910,7 +1162,6 @@
                             });
                         }
                         
-                        // Kiểm tra khớp một phần (chứa từ khóa)
                         if (!foundInTitle) {
                             titleWords.forEach(titleWord => {
                                 if (titleWord.includes(queryWord) || queryWord.includes(titleWord)) {
@@ -921,7 +1172,6 @@
                         }
                     });
                     
-                    // Tính điểm cho các trường hợp không liền kề
                     if (titleMatches > 0) {
                         score += titleMatches * 1000;
                         score += orderScore;
@@ -934,33 +1184,27 @@
                     }
                 }
                 
-                // 4. BONUS ĐIỂM DỰA TRÊN ĐỘ DÀI TƯƠNG ĐỒNG
                 if (score > 0) {
                     const titleLength = data.title.split(/\s+/).length;
-                    const contentLength = data.content.split(/\s+/).length;
                     const queryLength = queryWords.length;
                     
-                    // Ưu tiên kết quả có độ dài title gần với query
                     const lengthDiff = Math.abs(titleLength - queryLength);
                     if (lengthDiff === 0) {
-                        score += 5000; // Title có cùng độ dài với query
+                        score += 5000;
                     } else if (lengthDiff <= 2) {
-                        score += 3000; // Title có độ dài gần với query
+                        score += 3000;
                     } else if (lengthDiff <= 5) {
                         score += 1000;
                     }
                     
-                    // Penalty cho kết quả quá dài so với query
                     if (titleLength > queryLength * 3) {
                         score -= 500;
                     }
                 }
                 
-                // 5. BONUS CHO TỶ LỆ KHỚP
                 const matchRatio = matchedWords / queryWords.length;
                 score += matchRatio * 2000;
                 
-                // Chỉ thêm vào kết quả nếu có ít nhất 1 từ khớp
                 if (matchedWords > 0) {
                     results.push({
                         title: data.title,
@@ -975,13 +1219,11 @@
                 }
             });
             
-            // Sắp xếp theo điểm số
             results.sort((a, b) => {
                 if (b.score !== a.score) return b.score - a.score;
                 return b.matchRatio - a.matchRatio;
             });
             
-            // Lọc kết quả: chỉ giữ những kết quả có điểm số >= 30% điểm cao nhất
             const threshold = results.length > 0 ? results[0].score * 0.3 : 0;
             const filteredResults = results.filter(r => r.score >= threshold);
             
@@ -1007,6 +1249,9 @@
             const message = input.value.trim();
             
             if (!message) return;
+            
+            // Increment question request count immediately when user sends a question
+            incrementQuestionRequest();
             
             const messagesDiv = document.getElementById('chatMessages');
             
