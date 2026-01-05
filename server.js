@@ -55,9 +55,9 @@ mongoose.connect(process.env.MONGO_URL, {
     connectTimeoutMS: 30000,
     retryWrites: true,
     w: 'majority',
-    maxPoolSize: 40,
-    minPoolSize: 10,
-    maxIdleTimeMS: 45000
+    maxPoolSize: 20,
+    minPoolSize: 5,
+    maxIdleTimeMS: 45000,
 })
 .then(() => console.log('✅ MongoDB Connected'))
 .catch(err => console.error('❌ MongoDB Connection Error:', err));
