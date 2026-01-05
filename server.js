@@ -55,11 +55,25 @@ mongoose.connect(process.env.MONGO_URL, {
     connectTimeoutMS: 30000,
     retryWrites: true,
     w: 'majority',
-    maxPoolSize: 10,
-    minPoolSize: 2
+    maxPoolSize: 40,
+    minPoolSize: 10,
+    maxIdleTimeMS: 45000
 })
 .then(() => console.log('✅ MongoDB Connected'))
 .catch(err => console.error('❌ MongoDB Connection Error:', err));
+
+// Connection event handlers
+mongoose.connection.on('disconnected', () => {
+    console.warn('⚠️ MongoDB Disconnected');
+});
+
+mongoose.connection.on('error', (err) => {
+    console.error('❌ MongoDB Connection Error:', err);
+});
+
+mongoose.connection.on('reconnected', () => {
+    console.log('✅ MongoDB Reconnected');
+});
 
 // Schemas
 
@@ -133,87 +147,128 @@ mongoose.connection.once('open', () => {
     initializeQuestionRequestCounter();
 });
 
+// Helper function to ensure database connection is ready
+function isMongoReady() {
+    return mongoose.connection.readyState === 1;
+}
+
+// Middleware to check database connection
+app.use((req, res, next) => {
+    if (!isMongoReady()) {
+        return res.status(503).json({
+            success: false,
+            error: 'Database not connected',
+            message: 'Please try again in a few moments'
+        });
+    }
+    next();
+});
+
 // Routes
 
 // ========== VISITOR COUNTER ROUTES ==========
 
 // Increment visitor count (called when page loads)
 app.post('/api/visitor', async (req, res) => {
-    try {
-        let counter = await VisitorCounter.findOne();
-        
-        if (!counter) {
-            counter = new VisitorCounter({ count: 1 });
-        } else {
-            counter.count += 1;
-            counter.lastUpdated = new Date();
+    let retries = 2;
+    while (retries > 0) {
+        try {
+            let counter = await VisitorCounter.findOne().maxTimeMS(5000);
+            
+            if (!counter) {
+                counter = new VisitorCounter({ count: 1 });
+            } else {
+                counter.count += 1;
+                counter.lastUpdated = new Date();
+            }
+            
+            await counter.save();
+            
+            return res.json({
+                success: true,
+                count: counter.count,
+                lastUpdated: counter.lastUpdated
+            });
+        } catch (err) {
+            retries--;
+            if (retries === 0) {
+                console.error('❌ Visitor counter error:', err.message);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Không thể cập nhật số lượt truy cập',
+                    details: err.message
+                });
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
         }
-        
-        await counter.save();
-        
-        res.json({
-            success: true,
-            count: counter.count,
-            lastUpdated: counter.lastUpdated
-        });
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: 'Không thể cập nhật số lượt truy cập',
-            details: err.message
-        });
     }
 });
 
 // Get visitor count (without incrementing)
 app.get('/api/visitor', async (req, res) => {
-    try {
-        let counter = await VisitorCounter.findOne();
-        
-        if (!counter) {
-            counter = new VisitorCounter({ count: 0 });
-            await counter.save();
+    let retries = 2;
+    while (retries > 0) {
+        try {
+            let counter = await VisitorCounter.findOne().maxTimeMS(5000);
+            
+            if (!counter) {
+                counter = new VisitorCounter({ count: 0 });
+                await counter.save();
+            }
+            
+            return res.json({
+                success: true,
+                count: counter.count,
+                lastUpdated: counter.lastUpdated
+            });
+        } catch (err) {
+            retries--;
+            if (retries === 0) {
+                console.error('❌ Get visitor count error:', err.message);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Không thể lấy số lượt truy cập',
+                    details: err.message
+                });
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        
-        res.json({
-            success: true,
-            count: counter.count,
-            lastUpdated: counter.lastUpdated
-        });
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: 'Không thể lấy số lượt truy cập',
-            details: err.message
-        });
     }
 });
 
 // Reset visitor count (admin only)
 app.post('/api/visitor/reset', async (req, res) => {
-    try {
-        let counter = await VisitorCounter.findOne();
-        
-        if (!counter) {
-            counter = new VisitorCounter({ count: 0 });
-        } else {
-            counter.count = 0;
-            counter.lastUpdated = new Date();
+    let retries = 2;
+    while (retries > 0) {
+        try {
+            let counter = await VisitorCounter.findOne().maxTimeMS(5000);
+            
+            if (!counter) {
+                counter = new VisitorCounter({ count: 0 });
+            } else {
+                counter.count = 0;
+                counter.lastUpdated = new Date();
+            }
+            
+            await counter.save();
+            
+            return res.json({
+                success: true,
+                message: 'Đã reset số lượt truy cập về 0',
+                count: counter.count
+            });
+        } catch (err) {
+            retries--;
+            if (retries === 0) {
+                console.error('❌ Reset visitor count error:', err.message);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Không thể reset số lượt truy cập',
+                    details: err.message
+                });
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        
-        await counter.save();
-        
-        res.json({
-            success: true,
-            message: 'Đã reset số lượt truy cập về 0',
-            count: counter.count
-        });
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: 'Không thể reset số lượt truy cập',
-            details: err.message
-        });
     }
 });
 
@@ -221,81 +276,105 @@ app.post('/api/visitor/reset', async (req, res) => {
 
 // Increment question request count (called when user sends a question)
 app.post('/api/questions/request', async (req, res) => {
-    try {
-        let counter = await QuestionRequestCounter.findOne();
-        
-        if (!counter) {
-            counter = new QuestionRequestCounter({ count: 1 });
-        } else {
-            counter.count += 1;
-            counter.lastUpdated = new Date();
+    let retries = 2;
+    while (retries > 0) {
+        try {
+            let counter = await QuestionRequestCounter.findOne().maxTimeMS(5000);
+            
+            if (!counter) {
+                counter = new QuestionRequestCounter({ count: 1 });
+            } else {
+                counter.count += 1;
+                counter.lastUpdated = new Date();
+            }
+            
+            await counter.save();
+            
+            return res.json({
+                success: true,
+                count: counter.count,
+                lastUpdated: counter.lastUpdated
+            });
+        } catch (err) {
+            retries--;
+            if (retries === 0) {
+                console.error('❌ Question request counter error:', err.message);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Không thể cập nhật số lượng câu hỏi',
+                    details: err.message
+                });
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        
-        await counter.save();
-        
-        res.json({
-            success: true,
-            count: counter.count,
-            lastUpdated: counter.lastUpdated
-        });
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: 'Không thể cập nhật số lượng câu hỏi',
-            details: err.message
-        });
     }
 });
 
 // Get question request count
 app.get('/api/questions/request', async (req, res) => {
-    try {
-        let counter = await QuestionRequestCounter.findOne();
-        
-        if (!counter) {
-            counter = new QuestionRequestCounter({ count: 0 });
-            await counter.save();
+    let retries = 2;
+    while (retries > 0) {
+        try {
+            let counter = await QuestionRequestCounter.findOne().maxTimeMS(5000);
+            
+            if (!counter) {
+                counter = new QuestionRequestCounter({ count: 0 });
+                await counter.save();
+            }
+            
+            return res.json({
+                success: true,
+                count: counter.count,
+                lastUpdated: counter.lastUpdated
+            });
+        } catch (err) {
+            retries--;
+            if (retries === 0) {
+                console.error('❌ Get question request count error:', err.message);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Không thể lấy số lượng câu hỏi',
+                    details: err.message
+                });
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        
-        res.json({
-            success: true,
-            count: counter.count,
-            lastUpdated: counter.lastUpdated
-        });
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: 'Không thể lấy số lượng câu hỏi',
-            details: err.message
-        });
     }
 });
 
 // Reset question request count (admin only)
 app.post('/api/questions/request/reset', async (req, res) => {
-    try {
-        let counter = await QuestionRequestCounter.findOne();
-        
-        if (!counter) {
-            counter = new QuestionRequestCounter({ count: 0 });
-        } else {
-            counter.count = 0;
-            counter.lastUpdated = new Date();
+    let retries = 2;
+    while (retries > 0) {
+        try {
+            let counter = await QuestionRequestCounter.findOne().maxTimeMS(5000);
+            
+            if (!counter) {
+                counter = new QuestionRequestCounter({ count: 0 });
+            } else {
+                counter.count = 0;
+                counter.lastUpdated = new Date();
+            }
+            
+            await counter.save();
+            
+            return res.json({
+                success: true,
+                message: 'Đã reset số lượng câu hỏi về 0',
+                count: counter.count
+            });
+        } catch (err) {
+            retries--;
+            if (retries === 0) {
+                console.error('❌ Reset question request count error:', err.message);
+                return res.status(500).json({
+                    success: false,
+                    error: 'Không thể reset số lượng câu hỏi',
+                    details: err.message
+                });
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        
-        await counter.save();
-        
-        res.json({
-            success: true,
-            message: 'Đã reset số lượng câu hỏi về 0',
-            count: counter.count
-        });
-    } catch (err) {
-        res.status(500).json({
-            success: false,
-            error: 'Không thể reset số lượng câu hỏi',
-            details: err.message
-        });
     }
 });
 
@@ -304,7 +383,7 @@ app.post('/api/questions/request/reset', async (req, res) => {
 // Get all data
 app.get('/api/data', async (req, res) => {
     try {
-        const data = await ChatData.find().sort({ createdAt: -1 });
+        const data = await ChatData.find().sort({ createdAt: -1 }).maxTimeMS(10000);
         // Map _id to id for frontend compatibility
         const formattedData = data.map(item => ({
             id: item._id,
@@ -314,7 +393,11 @@ app.get('/api/data', async (req, res) => {
         }));
         res.json(formattedData);
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('❌ Get all data error:', err.message);
+        res.status(500).json({ 
+            error: 'Không thể lấy dữ liệu',
+            details: err.message 
+        });
     }
 });
 
@@ -362,7 +445,7 @@ app.post('/api/data/:id/increment', async (req, res) => {
 // Get total question count
 app.get('/api/questions/total-count', async (req, res) => {
     try {
-        const questions = await ChatData.find();
+        const questions = await ChatData.find().maxTimeMS(10000);
         const totalCount = questions.reduce((sum, q) => sum + (q.questionCount || 0), 0);
         
         res.json({
@@ -371,7 +454,11 @@ app.get('/api/questions/total-count', async (req, res) => {
             totalQuestions: questions.length
         });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.error('❌ Get total question count error:', err.message);
+        res.status(500).json({ 
+            error: 'Không thể lấy số lượng câu hỏi',
+            details: err.message 
+        });
     }
 });
 
